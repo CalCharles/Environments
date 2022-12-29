@@ -2,7 +2,7 @@ import sys, time, cv2, os
 import argparse
 from Environment.Environments.initialize_environment import initialize_environment
 from Record.file_management import display_frame, display_param, save_to_pickle
-from Causal.Sampling.sampling import samplers
+# from Causal.Sampling.sampling import samplers
 import numpy as np
 from State.feature_selector import construct_object_selector
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
         policy = AnglePolicy(4)
         angle = np.random.randint(4)
     if args.variant == "proximity":
-        environment.sampler = samplers["exist"](obj_dim=5, target_select=construct_object_selector(["Block"], environment),parent_select=None,additional_select=None,test_sampler=False,mask=None)
+        # environment.sampler = samplers["exist"](obj_dim=5, target_select=construct_object_selector(["Block"], environment),parent_select=None,additional_select=None,test_sampler=False,mask=None)
         environment.reset()
     start = time.time()
     for i in range(args.num_frames):
