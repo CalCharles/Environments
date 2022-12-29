@@ -18,6 +18,8 @@ pip install opencv-python
 conda install psutil
 pip install pyyaml
 
+# generating data
+
 generate Random conditionals
 python generate_random.py --env RandomDistribution --record-rollouts ./data/RandomDistribution/random/ --num-frames 1000
 python generate_random.py --env RandomDistribution --record-rollouts ./data/RandomDistribution/random_conditional/ --num-frames 1000 --variant conditional
