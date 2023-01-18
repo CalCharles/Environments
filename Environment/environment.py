@@ -21,6 +21,7 @@ class Environment():
         self.discrete_actions = True
         self.frameskip = frameskip # no frameskip
         self.transpose = True # transposes the visual domain
+        self.action_dim = self.num_actions
 
         # spaces
         self.action_shape = (1,) # should be set in the environment, (1,) is for discrete action environments
@@ -102,6 +103,12 @@ class Environment():
                 raw_state (dictionary of name of object to raw state)
                 factor_state (dictionary of name of object to tuple of object bounding box and object property)
         '''
+        pass
+
+    def observation_spec(self):
+        return self.get_state()
+
+    def observation_dims(self):
         pass
 
     def get_info(self): # returns the info, the most important value is TimeLimit.truncated, can be overriden

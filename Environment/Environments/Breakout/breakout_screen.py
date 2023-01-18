@@ -1,5 +1,6 @@
 # Screen
 import sys, cv2
+sys.path.insert(0, "/home/oscar/Research/ML_EID/Environments/")
 import numpy as np
 from Environment.environment import Environment, Done, Reward
 from Environment.Environments.Breakout.breakout_objects import *
@@ -20,12 +21,14 @@ class Breakout(Environment):
         self.variant = breakout_variant
         self.self_reset = True
         self.fixed_limits = True
+        
 
         # environment properties
         self.num_actions = 4 # this must be defined, -1 for continuous. Only needed for primitive actions
         self.name = "Breakout" # required for an environment 
         self.discrete_actions = True
         self.frameskip = 1 # no frameskip
+        self.action_dim = self.num_actions
 
         # spaces
         self.action_shape = (1,)
@@ -99,6 +102,8 @@ class Breakout(Environment):
         self.num_remove = self.get_num(True)
         self.all_names = ["Action", "Paddle", "Ball"] + [b.name for b in self.blocks] + ['Done', "Reward"]
         self.instance_length = len(self.all_names)
+
+        # print(self.object_range)
 
     def assign_assessment_stat(self):
         if self.dropped and self.variant != "proximity":
@@ -293,11 +298,102 @@ class Breakout(Environment):
                 total += 1
         return total
 
+    # def get_state(self, render=False):
+    #     if render: self.render()
+    #     rdset = set(["Reward", "Done"])
+    #     # state =  {"raw_state": self.frame, "factored_state": numpy_factored({**{obj.name: obj.getMidpoint() + obj.vel.tolist() + [obj.getAttribute()] for obj in self.objects if obj.name not in rdset}, **{'Done': [self.done.attribute], 'Reward': [self.reward.attribute]}})}
+    #     state =  {"raw_state": self.frame, **numpy_factored({**{obj.name: obj.getMidpoint() + obj.vel.tolist() + [obj.getAttribute()] for obj in self.objects if obj.name not in rdset}, **{'Done': [self.done.attribute], 'Reward': [self.reward.attribute]}})}
+    #     # print(state)
+    #     return state
+
     def get_state(self, render=False):
         if render: self.render()
         rdset = set(["Reward", "Done"])
-        state =  {"raw_state": self.frame, "factored_state": numpy_factored({**{obj.name: obj.getMidpoint() + obj.vel.tolist() + [obj.getAttribute()] for obj in self.objects if obj.name not in rdset}, **{'Done': [self.done.attribute], 'Reward': [self.reward.attribute]}})}
+        # state =  {"raw_state": self.frame, "factored_state": numpy_factored({**{obj.name: obj.getMidpoint() + obj.vel.tolist() + [obj.getAttribute()] for obj in self.objects if obj.name not in rdset}, **{'Done': [self.done.attribute], 'Reward': [self.reward.attribute]}})}
+        state = {"raw_state": self.frame}
+        # state =  {"raw_state": self.frame, **numpy_factored({**{obj.name: obj.getMidpoint() + obj.vel.tolist() + [obj.getAttribute()] for obj in self.objects if obj.name not in rdset}, **{'Done': [self.done.attribute], 'Reward': [self.reward.attribute]}})}
+
+        fact_dict = {}
+        for obj in self.objects:
+            if obj.name not in rdset:
+                mid_point = obj.getMidpoint()
+                vel = obj.vel.tolist()
+                attribute = obj.getAttribute()
+
+                if "Ball" in obj.name:
+                    temp_name = "Ball"
+
+                    if self.object_range[temp_name][0][2] < 0:
+                        vel[0] = vel[0] + self.object_range[temp_name][1][2]
+                    if self.object_range[temp_name][0][3] < 0:
+                        vel[1] = vel[1] + self.object_range[temp_name][1][3]
+                    if self.object_range[temp_name][0][4] < 0:
+                        attribute = attribute + self.object_range[temp_name][1][4]
+
+                if "Block" in obj.name:
+                    temp_name = "Block"
+                    
+                    if self.object_range[temp_name][0][2] < 0:
+                        vel[0] = vel[0] + self.object_range[temp_name][1][2]
+                    if self.object_range[temp_name][0][3] < 0:
+                        vel[1] = vel[1] + self.object_range[temp_name][1][3]
+                    if self.object_range[temp_name][0][4] < 0:
+                        attribute = attribute + self.object_range[temp_name][1][4]
+
+                if "Paddle" in obj.name:
+                    temp_name = "Paddle"
+                    
+                    if self.object_range[temp_name][0][2] < 0:
+                        vel[0] = vel[0] + self.object_range[temp_name][1][2]
+                    if self.object_range[temp_name][0][3] < 0:
+                        vel[1] = vel[1] + self.object_range[temp_name][1][3]
+                    if self.object_range[temp_name][0][4] < 0:
+                        attribute = attribute + self.object_range[temp_name][1][4]
+                    
+                    
+                fact_dict[obj.name] = mid_point + vel + [attribute]
+            
+        state.update(numpy_factored(fact_dict))
+        state.update({'Done': [self.done.attribute], 'Reward': [self.reward.attribute]})
+        
+        # print(state)
         return state
+
+    def observation_dims(self):
+        _state = self.get_state()
+        state = {}
+        for key, item in _state.items():
+
+            if "Ball" in key:
+                # pos-x, pos-y, vel-x, vel-y, attribute 
+                dim = self._extract_obj_dim("Ball")
+                state[key] = dim
+            elif "Paddle" in key:
+                # pos-x, pos-y, vel-x, vel-y, attribute 
+                dim = self._extract_obj_dim("Paddle")
+                state[key] = dim
+            elif "Block" in key:
+                # pos-x, pos-y, vel-x, vel-y, attribute 
+                dim = self._extract_obj_dim("Block")
+                state[key] = dim
+            elif "Action" in key:
+                # attribute 
+                dim = self._extract_obj_dim("Action")
+                state[key] = dim
+            elif "Wall" in key:
+                dim = self._extract_obj_dim("Block")
+                state[key] = dim
+        return state
+
+    def _extract_obj_dim(self, obj):
+        range_ = self.object_range[obj]
+        dim = range_[1] - range_[0]
+        for i, dim_ in enumerate(dim):
+            # account for legal zero
+            if (range_[0][i] < 0 or range_[0][i] == 0) and range_[1][i] > 0:
+                dim[i] = dim_ + 1
+        return dim.astype("int").tolist()
+
 
     def get_info(self):
         return {"lives": 5-self.ball.losses, "TimeLimit.truncated": False, "assessment": self.assessment_stat, "total_score": self.total_score}
@@ -421,9 +517,22 @@ class Breakout(Environment):
         # record state information before any resets
         self.itr += 1
         full_state = self.get_state(render)
-        frame, extracted_state = full_state['raw_state'], full_state['factored_state']
+        # frame, extracted_state = full_state['raw_state'], full_state['factored_state']
         # print("done at assign", self.done.attribute, extracted_state["Done"])
         lives = 5-self.ball.losses
+
+        # print(full_state.keys())
+
+        # for key, item in full_state['factored_state'].items():
+        #     print(key)
+        #     print(item.shape)
+
+        #     if item.shape[0] > 1:
+        #         for item_pos in item:
+        #             print(item_pos)
+
+        # print("\n****************************************************\n")
+
 
         # get assessment values
         self.assign_assessment_stat() # TODO: bugs may occur if using frame skipping

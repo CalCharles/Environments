@@ -6,14 +6,13 @@ paddle_width = 7
 paddle_velocity = 2
 
 class Object():
-
     def __init__(self, pos, attribute):
-        self.pos = pos
         self.vel = np.zeros(pos.shape).astype(np.int64)
         self.width = 0
         self.height = 0
         self.attribute = attribute
         self.interaction_trace = list()
+        self.pos = pos
 
     def getBB(self):
         return [self.pos[0], self.pos[1], self.pos[0] + self.height, self.pos[1] + self.width]
@@ -114,11 +113,14 @@ class Ball(animateObject):
         # print(self.apply_move, self.vel)
         if intersection(self, other) and self.apply_move:
             if other.name == "Paddle":
+                print("Ball has hit the paddle!!!")
+                print("Ball pos, velo before paddle hit: ", self.pos, " ", self.vel)
                 rel_x = self.next_pos[1] - other.pos[1]
                 self.vel = self.paddle_interact[int(rel_x)].copy()
                 self.apply_move = False
                 self.paddlehits += 1
                 self.paddle = True
+                print(self.pos, self.vel, "paddle!", intersection(self,other))
             elif other.name.find("SideWall") != -1:
                 self.vel = np.array([self.vel[0], -self.vel[1]])
                 self.apply_move = False
